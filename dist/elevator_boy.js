@@ -9,7 +9,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var game = new _game2.default();
 game.run();
-},{"./elevator_boy/game":4}],2:[function(require,module,exports){
+},{"./elevator_boy/game":6}],2:[function(require,module,exports){
 'use strict';
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -17,6 +17,93 @@ var _createClass = (function () { function defineProperties(target, props) { for
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Cargo = (function () {
+  function Cargo(game, target, type, lifetime) {
+    _classCallCheck(this, Cargo);
+
+    this.game = game;
+
+    this.target = target;
+    this.type = type;
+    this.lifetime = lifetime;
+  }
+
+  _createClass(Cargo, [{
+    key: 'draw',
+    value: function draw(context, x, y) {
+      context.fillStyle = 'black';
+      //context.fillRect(x, y, 10, 10);
+      context.fillText(this.target.toString(), x, y);
+    }
+  }]);
+
+  return Cargo;
+})();
+
+exports.default = Cargo;
+},{}],3:[function(require,module,exports){
+'use strict';
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var normalizeHue = function normalizeHue(hue) {
+  while (hue < 0) {
+    hue += 360;
+  }
+
+  while (hue > 360) {
+    hue -= 360;
+  }
+
+  return hue;
+};
+
+var Color = (function () {
+  function Color(hue, saturation, lightness) {
+    _classCallCheck(this, Color);
+
+    this.hue = hue ? normalizeHue(hue) : 0;
+    this.saturation = saturation || 100;
+    this.lightness = lightness || 50;
+  }
+
+  _createClass(Color, [{
+    key: 'cssValue',
+    value: function cssValue() {
+      return 'hsl(' + this.hue + ', ' + this.saturation + '%, ' + this.lightness + '%)';
+    }
+  }, {
+    key: 'complementary',
+    value: function complementary() {
+      return new Color(180 - this.hue, this.saturation, this.lightness);
+    }
+  }]);
+
+  return Color;
+})();
+
+exports.default = Color;
+},{}],4:[function(require,module,exports){
+'use strict';
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _cargo = require('./cargo');
+
+var _cargo2 = _interopRequireDefault(_cargo);
 
 var _get_image = require('./get_image');
 
@@ -34,14 +121,12 @@ var Elevator = (function () {
 
     this.game = game;
 
-    this.x = 0;
-    this.y = 100;
-
-    this.moving = false;
-    this.direction = null;
+    this.y = 400;
 
     this.floor = 0;
     this.target = 0;
+
+    this.cargoes = [];
 
     this.command = null;
 
@@ -59,16 +144,31 @@ var Elevator = (function () {
   _createClass(Elevator, [{
     key: 'update',
     value: function update(deltaTime) {
-      if (this.command === 'up' && this.floor > 0) {
-        this.target = this.floor - 1;
-      } else if (this.command === 'down' && this.floor < this.game.floors.length - 1) {
-        this.target = this.floor + 1;
+      if (this.target === this.floor) {
+        if (this.command === 'up' && this.floor < this.game.floors.length - 1) {
+          this.target = this.floor + 1;
+        } else if (this.command === 'down' && this.floor > 0) {
+          this.target = this.floor - 1;
+        }
       }
 
       this.command = null;
 
-      this.floor = this.target;
-      this.y = this.floor * 100;
+      if (this.target !== this.floor) {
+        if (this.target < this.floor) {
+          this.y += 0.1 * deltaTime;
+          if (this.y >= 400 - this.target * 100) {
+            this.floor = this.target;
+            this.y = 400 - this.target * 100;
+          }
+        } else {
+          this.y -= 0.1 * deltaTime;
+          if (this.y <= 400 - this.target * 100) {
+            this.floor = this.target;
+            this.y = 400 - this.target * 100;
+          }
+        }
+      }
     }
   }, {
     key: 'draw',
@@ -76,8 +176,17 @@ var Elevator = (function () {
       var image = (0, _get_image2.default)('images/elevator.png');
 
       if (image) {
-        context.drawImage(image, this.x, this.y);
+        context.drawImage(image, 0, this.y);
       }
+
+      for (var c = 0; c < this.cargoes.length; c++) {
+        this.cargoes[c].draw(context, 10 + c * 15, this.y + 85);
+      }
+    }
+  }, {
+    key: 'addCargo',
+    value: function addCargo(cargo) {
+      this.cargoes.push(cargo);
     }
   }]);
 
@@ -85,7 +194,7 @@ var Elevator = (function () {
 })();
 
 exports.default = Elevator;
-},{"./get_image":5}],3:[function(require,module,exports){
+},{"./cargo":2,"./get_image":7}],5:[function(require,module,exports){
 'use strict';
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -93,6 +202,12 @@ var _createClass = (function () { function defineProperties(target, props) { for
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _store = require('./store');
+
+var _store2 = _interopRequireDefault(_store);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -104,6 +219,14 @@ var Floor = (function () {
 
     this.index = index;
     this.color = color;
+
+    this.cargoes = [];
+
+    this.stores = [];
+
+    for (var i = 0; i < 3; i++) {
+      this.addStore();
+    }
   }
 
   _createClass(Floor, [{
@@ -112,9 +235,33 @@ var Floor = (function () {
   }, {
     key: 'draw',
     value: function draw(context) {
-      context.fillStyle = this.color;
+      context.fillStyle = this.color.cssValue();
 
-      context.fillRect(0, this.index * 100, 300, 100);
+      //context.fillRect(100, 400 - this.index * 100, 600, 100);
+
+      for (var s = 0; s < this.stores.length; s++) {
+        this.stores[s].draw(context, 100 + s * 100, 400 - this.index * 100);
+      }
+
+      context.fillStyle = 'black';
+      context.font = '28px sans-serif';
+      context.textBaseline = 'top';
+
+      context.fillText(this.index.toString(), 120, 420 - this.index * 100);
+
+      for (var c = 0; c < this.cargoes.length; c++) {
+        this.cargoes[c].draw(context, 120 + c * 20, 470 - this.index * 100);
+      }
+    }
+  }, {
+    key: 'addCargo',
+    value: function addCargo(cargo) {
+      this.cargoes.push(cargo);
+    }
+  }, {
+    key: 'addStore',
+    value: function addStore() {
+      this.stores.push(new _store2.default());
     }
   }]);
 
@@ -122,7 +269,7 @@ var Floor = (function () {
 })();
 
 exports.default = Floor;
-},{}],4:[function(require,module,exports){
+},{"./store":8}],6:[function(require,module,exports){
 'use strict';
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -139,6 +286,14 @@ var _floor = require('./floor');
 
 var _floor2 = _interopRequireDefault(_floor);
 
+var _color = require('./color');
+
+var _color2 = _interopRequireDefault(_color);
+
+var _cargo = require('./cargo');
+
+var _cargo2 = _interopRequireDefault(_cargo);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -154,13 +309,26 @@ var Game = (function () {
 
     this.context = this.canvas.getContext('2d');
 
+    this.elevator = new _elevator2.default(this);
+
     this.floors = [];
 
-    this.floors.push(new _floor2.default(this, 0, 'red'));
-    this.floors.push(new _floor2.default(this, 1, 'green'));
-    this.floors.push(new _floor2.default(this, 2, 'blue'));
+    for (var i = 0; i < 3; i++) {
+      this.addFloor();
+    }
 
-    this.elevator = new _elevator2.default(this);
+    this.floorTimer = 0;
+    this.floorDelay = 13000;
+
+    for (var i = 0; i < 3; i++) {
+      this.addCargo();
+    }
+
+    this.cargoTimer = 0;
+    this.cargoDelay = 2500;
+
+    this.storeTimer = 0;
+    this.storeDelay = 4000;
 
     this.lastTime = performance.now();
   }
@@ -173,8 +341,18 @@ var Game = (function () {
       var currentTime = performance.now();
       var deltaTime = currentTime - this.lastTime;
 
-      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.update(deltaTime);
+      this.draw();
 
+      this.lastTime = currentTime;
+
+      requestAnimationFrame(function () {
+        return _this.run();
+      });
+    }
+  }, {
+    key: 'update',
+    value: function update(deltaTime) {
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
       var _iteratorError = undefined;
@@ -202,6 +380,33 @@ var Game = (function () {
 
       this.elevator.update(deltaTime);
 
+      this.floorTimer += deltaTime;
+
+      if (this.floorTimer >= this.floorDelay) {
+        this.addFloor();
+        this.floorTimer = 0;
+      }
+
+      this.cargoTimer += deltaTime;
+
+      if (this.cargoTimer >= this.cargoDelay) {
+        this.addCargo();
+        this.cargoTimer = 0;
+      }
+
+      this.storeTimer += deltaTime;
+
+      if (this.storeTimer >= this.storeDelay) {
+        this.addStores();
+        this.storeTimer = 0;
+      }
+    }
+  }, {
+    key: 'draw',
+    value: function draw() {
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.context.translate(0, 240 - this.elevator.y);
+
       var _iteratorNormalCompletion2 = true;
       var _didIteratorError2 = false;
       var _iteratorError2 = undefined;
@@ -228,12 +433,50 @@ var Game = (function () {
       }
 
       this.elevator.draw(this.context);
+      this.context.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  }, {
+    key: 'addFloor',
+    value: function addFloor() {
+      this.floors.push(new _floor2.default(this, this.floors.length, new _color2.default(this.floors.length * 100, 75, 40)));
+    }
+  }, {
+    key: 'addCargo',
+    value: function addCargo() {
+      var floor = Math.floor(this.floors.length * Math.random() % this.floors.length);
+      var target = -1;
+      do {
+        target = Math.floor(this.floors.length * Math.random() % this.floors.length);
+      } while (floor === target);
+      this.floors[floor].addCargo(new _cargo2.default(this, target));
+    }
+  }, {
+    key: 'addStores',
+    value: function addStores() {
+      var _iteratorNormalCompletion3 = true;
+      var _didIteratorError3 = false;
+      var _iteratorError3 = undefined;
 
-      this.lastTime = currentTime;
+      try {
+        for (var _iterator3 = this.floors[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+          var floor = _step3.value;
 
-      requestAnimationFrame(function () {
-        return _this.run();
-      });
+          floor.addStore();
+        }
+      } catch (err) {
+        _didIteratorError3 = true;
+        _iteratorError3 = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion3 && _iterator3.return) {
+            _iterator3.return();
+          }
+        } finally {
+          if (_didIteratorError3) {
+            throw _iteratorError3;
+          }
+        }
+      }
     }
   }]);
 
@@ -241,7 +484,7 @@ var Game = (function () {
 })();
 
 exports.default = Game;
-},{"./elevator":2,"./floor":3}],5:[function(require,module,exports){
+},{"./cargo":2,"./color":3,"./elevator":4,"./floor":5}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -271,4 +514,36 @@ var getImage = function getImage(path) {
 };
 
 exports.default = getImage;
+},{}],8:[function(require,module,exports){
+'use strict';
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Store = (function () {
+  function Store(game, type) {
+    _classCallCheck(this, Store);
+
+    this.game = game;
+
+    this.type = type;
+  }
+
+  _createClass(Store, [{
+    key: 'draw',
+    value: function draw(context, x, y) {
+      context.fillStyle = 'green';
+      context.fillRect(x, y, 100, 100);
+    }
+  }]);
+
+  return Store;
+})();
+
+exports.default = Store;
 },{}]},{},[1]);
