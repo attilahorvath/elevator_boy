@@ -23,7 +23,7 @@ gulp.task('browserify', ['compile'], () => {
   .bundle()
   .pipe(source('elevator_boy.js'))
   .pipe(buffer())
-  .pipe(uglify())
+  //.pipe(uglify())
   .pipe(gulp.dest('dist'));
 });
 
